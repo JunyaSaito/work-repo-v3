@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gws:*)",
+      "Bash(gws sheets:*)",
+      "Bash(bash:*)",
+      "Bash(python3:*)",
+      "Bash(py:*)",
+      "Bash(node:*)",
+      "Bash(mkdir:*)",
+      "Bash(tasks/成果レポート自動化/write_insights.sh:*)",
+      "Bash(python:*)",
+      "Bash(tasks/成果レポート自動化/write_labels.sh:*)",
+      "Bash(tasks/成果レポート自動化/write_labels_batch.sh:*)",
+      "Bash(tasks/成果レポート自動化/fix_bg.sh:*)",
+      "Bash(echo \"$TEMP\")",
+      "Bash(gh auth:*)",
+      "Bash(cat:*)"
+    ]
+  }
+}
