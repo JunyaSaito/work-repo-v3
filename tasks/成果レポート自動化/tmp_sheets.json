@@ -1,0 +1,55 @@
+{
+  "sheets": [
+    {
+      "properties": {
+        "gridProperties": {
+          "columnCount": 28,
+          "frozenRowCount": 1,
+          "rowCount": 1859
+        },
+        "index": 0,
+        "sheetId": 817348000,
+        "sheetType": "GRID",
+        "title": "配信実績"
+      }
+    },
+    {
+      "properties": {
+        "gridProperties": {
+          "columnCount": 28,
+          "hideGridlines": true,
+          "rowCount": 1017
+        },
+        "index": 1,
+        "sheetId": 470975139,
+        "sheetType": "GRID",
+        "title": "テンプレ"
+      }
+    },
+    {
+      "properties": {
+        "gridProperties": {
+          "columnCount": 28,
+          "hideGridlines": true,
+          "rowCount": 1080
+        },
+        "index": 2,
+        "sheetId": 933301013,
+        "sheetType": "GRID",
+        "title": "成果レポート_202510-202512"
+      }
+    },
+    {
+      "properties": {
+        "gridProperties": {
+          "columnCount": 26,
+          "rowCount": 1000
+        },
+        "index": 3,
+        "sheetId": 1057154369,
+        "sheetType": "GRID",
+        "title": "シート2"
+      }
+    }
+  ]
+}

@@ -56,5 +56,21 @@
   "summaryStartCol": "F",
   "summaryEndCol": "Q",
   "summaryStartColIndex": 5,
-  "summaryEndColIndex": 17
+  "summaryEndColIndex": 17,
+  "labels": [
+    "F2転換",
+    "THANKS招待",
+    "お気に入りリタゲ",
+    "かご落ち",
+    "イベント/個別配信",
+    "クーポン/INFO",
+    "バースデー特典",
+    "ランクアップ",
+    "会員特典",
+    "個店メルマガ",
+    "全店メルマガ",
+    "全店メルマガ（レコメンド）",
+    "全店メルマガ（週間ランキング）",
+    "閲覧リタゲ"
+  ]
 }

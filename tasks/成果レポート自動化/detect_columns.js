@@ -10,20 +10,11 @@
 //   3. 施策名|配信日|配信数|開封数|クリック数|合計CV数|直接CV数|間接CV数|合計CV金額|直接CV金額|間接CV金額
 
 const fs = require("fs");
+const { colLetter } = require("./utils");
 
 const headerFile = process.argv[2];
 const raw = JSON.parse(fs.readFileSync(headerFile, "utf-8"));
 const header = raw.values[0];
-
-function colLetter(index) {
-  let s = "";
-  let i = index;
-  while (i >= 0) {
-    s = String.fromCharCode(65 + (i % 26)) + s;
-    i = Math.floor(i / 26) - 1;
-  }
-  return s;
-}
 
 // rateOf: この指標の「率」を計算するとき分母にする指標名
 // rateOf が null → 率列を生成しない（金額系）

@@ -1,7 +1,7 @@
 // gen_formats.js
 // config.json の指標定義から、全サマリ列の数値書式＋罫線の batchUpdate リクエストを生成
 // Usage: node gen_formats.js CONFIG_FILE SHEET_ID SECTION_TYPE START_ROW END_ROW OUT_FILE
-//   SECTION_TYPE: "monthly" (年月別) or "label" (ラベル別)
+//   SECTION_TYPE: "monthly" (年月別), "label" (ラベル別), "campaign" (施策一覧)
 //   START_ROW: ヘッダー行 (1-based)
 //   END_ROW: 最終データ行 (1-based, inclusive)
 const fs = require("fs");
@@ -12,7 +12,8 @@ const sid = parseInt(sheetId);
 const startRow = parseInt(startRowStr); // 1-based header row
 const endRow = parseInt(endRowStr); // 1-based last data row (inclusive)
 
-const SUMMARY_START = 5; // F列 = column index 5
+// 施策一覧はK列(index 10)開始、それ以外はF列(index 5)開始
+const SUMMARY_START = sectionType === "campaign" ? 10 : 5;
 
 const BORDER = {
   style: "SOLID",
@@ -25,8 +26,10 @@ const BORDERS = { top: BORDER, bottom: BORDER, left: BORDER, right: BORDER };
 // 列順: [年月/ラベル, 指標1, (率1), 指標2, (率2), ...]
 const colFormats = [];
 
-// 1列目: 年月 or ラベル
-if (sectionType === "monthly") {
+// 1列目: 年月 or ラベル（施策一覧は指標のみなのでスキップ）
+if (sectionType === "campaign") {
+  // 施策一覧はK列から指標のみ、1列目なし
+} else if (sectionType === "monthly") {
   colFormats.push({ type: "DATE", pattern: 'yyyy"/"m' });
 } else {
   colFormats.push(null); // ラベル名はテキスト、数値書式不要

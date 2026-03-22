@@ -1,27 +1,17 @@
 // gen_label_summary.js
 // Usage: node gen_label_summary.js CONFIG_FILE START_DATE END_DATE SECTION_TITLE_ROW SHEET_NAME OUT_FILE
-// CONFIG_FILE: detect_columns.js が出力した JSON
+// CONFIG_FILE: detect_columns.js が出力した JSON（labels フィールドにラベル一覧を含む）
 const fs = require("fs");
+const { colLetter } = require("./utils");
 const [, , configFile, startDate, endDate, sectionTitleRowStr, sheet, outFile] =
   process.argv;
 const config = JSON.parse(fs.readFileSync(configFile, "utf-8"));
 
-const LABELS = [
-  "全店メルマガ",
-  "週間ランキング",
-  "レコメンド",
-  "個店メルマガ",
-  "かご落ち",
-  "閲覧リタゲ",
-  "お気に入りリタゲ",
-  "F2転換",
-  "バースデー特典",
-  "ランクアップ",
-  "Gold特典",
-  "THANKS招待",
-  "クーポンメール",
-  "INFO",
-];
+if (!config.labels || config.labels.length === 0) {
+  console.error("ERROR: config.labels が未定義です。columns_config.json に labels を追加してください。");
+  process.exit(1);
+}
+const LABELS = config.labels;
 
 const [sy, sm, sd] = startDate.split("/").map(Number);
 const [ey, em, ed] = endDate.split("/").map(Number);
@@ -31,16 +21,6 @@ const de = `DATE(${ey},${em},${ed})`;
 
 const SUMMARY_START = 5; // F列 = index 5
 const labelCol = config.labelCol;
-
-function colLetter(index) {
-  let s = "";
-  let i = index;
-  while (i >= 0) {
-    s = String.fromCharCode(65 + (i % 26)) + s;
-    i = Math.floor(i / 26) - 1;
-  }
-  return s;
-}
 
 function sumifs(srcCol, label) {
   return `SUMIFS('配信実績'!$${srcCol}$2:$${srcCol},'配信実績'!$B$2:$B,">="&${ds},'配信実績'!$B$2:$B,"<="&${de},'配信実績'!$${labelCol}$2:$${labelCol},"${label}")`;
@@ -75,6 +55,9 @@ const labelRows = LABELS.map((label, i) => {
 
   return row;
 });
+
+// ラベル数を出力（シェルスクリプトから参照）
+console.error(`NUM_LABELS=${LABELS.length}`);
 
 // ラベル別サマリ用ヘッダー（「年月」→「ラベル」に差し替え）
 const labelHeader = config.summaryHeader.map((h, i) => (i === 0 ? "ラベル" : h));

@@ -8,15 +8,15 @@ START_DATE="${1:?Usage: $0 START_DATE END_DATE SHEET_ID CONFIG_FILE}"
 END_DATE="${2:?Usage: $0 START_DATE END_DATE SHEET_ID CONFIG_FILE}"
 SHEET_ID="${3:?Usage: $0 START_DATE END_DATE SHEET_ID CONFIG_FILE}"
 CONFIG_FILE="${4:?Usage: $0 START_DATE END_DATE SHEET_ID CONFIG_FILE}"
-TEMPLATE_SHEET_ID=470975139
+TEMPLATE_SHEET_NAME="テンプレ"
 FIRST_ROW=18              # データ開始行（行17はヘッダー）
 TEMPLATE_ROWS=3           # テンプレのデフォルトデータ行数（行18-20）
-NUM_LABELS=14             # gen_label_summary.jsのラベル数と合わせる
-TEMPLATE_LABEL_ROWS=5     # テンプレのラベルプレースホルダー行数（行25-29）
+TEMPLATE_LABEL_ROWS=5     # テンプレのラベルプレースホルダー行数（行26-30）
 KPI_DATA_ROW=12           # メール施策の成果 データ行
 # テンプレの固定位置（行挿入前の基準値）
-TEMPLATE_LABEL_TITLE_ROW=22   # E22: ラベル別サマリ タイトル
-TEMPLATE_INSIGHT_LABEL_ROW=30 # B30: 示唆 ラベル
+TEMPLATE_LABEL_TITLE_ROW=23   # E23: ラベル別サマリ タイトル
+TEMPLATE_INSIGHT_LABEL_ROW=39 # B39: 示唆 ラベル
+LABEL_LIST_GAP=2              # ラベル別サマリと施策一覧サマリの間の空白行数
 
 WORK="$(cd "$(dirname "$0")" && pwd)/.work_$$"; mkdir -p "$WORK"; trap "rm -rf $WORK" EXIT
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -29,11 +29,15 @@ else
   SCRIPT_DIR_NODE="$SCRIPT_DIR"
 fi
 
-# ── config から動的値を読み取り ────────────────────────
-SUMMARY_END_COL=$(node -e "const c=JSON.parse(require('fs').readFileSync('$CONFIG_FILE','utf-8'));console.log(c.summaryEndCol)")
-SUMMARY_END_COL_IDX=$(node -e "const c=JSON.parse(require('fs').readFileSync('$CONFIG_FILE','utf-8'));console.log(c.summaryEndColIndex)")
-SUMMARY_COLS=$(node -e "const c=JSON.parse(require('fs').readFileSync('$CONFIG_FILE','utf-8'));console.log(c.summaryCols)")
-SUMMARY_HEADER_JSON=$(node -e "const c=JSON.parse(require('fs').readFileSync('$CONFIG_FILE','utf-8'));console.log(JSON.stringify(c.summaryHeader))")
+# ── config から動的値を一括読み取り ────────────────────────
+eval "$(node -e "
+const c=JSON.parse(require('fs').readFileSync('$CONFIG_FILE','utf-8'));
+console.log('SUMMARY_END_COL='+c.summaryEndCol);
+console.log('SUMMARY_END_COL_IDX='+c.summaryEndColIndex);
+console.log('SUMMARY_COLS='+c.summaryCols);
+console.log('NUM_LABELS='+((c.labels||[]).length));
+console.log('SUMMARY_HEADER_JSON='+JSON.stringify(JSON.stringify(c.summaryHeader)));
+")"
 
 echo "▶ サマリ列: F:$SUMMARY_END_COL (${SUMMARY_COLS}列)"
 
@@ -58,6 +62,23 @@ s=$(printf '%04d%02d' "$start_y" "$start_m")
 e=$(printf '%04d%02d' "$end_y"   "$end_m")
 SHEET="成果レポート_${s}-${e}"
 echo "▶ シート名: $SHEET"
+
+# ════════════════════════════════════════════════
+# 0. テンプレシートのIDを動的に取得
+# ════════════════════════════════════════════════
+echo "[0/9] テンプレシートID取得..."
+cat > "$WORK/get_sheets.sh" <<SH
+gws sheets spreadsheets get \
+  --params '{"spreadsheetId":"$SHEET_ID","fields":"sheets.properties"}'
+SH
+bash "$WORK/get_sheets.sh" > "$WORK/sheets.json"
+TEMPLATE_SHEET_ID=$(node -e "
+const d=JSON.parse(require('fs').readFileSync('$WORK_NODE/sheets.json','utf-8'));
+const s=d.sheets.find(s=>s.properties.title==='$TEMPLATE_SHEET_NAME');
+if(!s){console.error('ERROR: 「$TEMPLATE_SHEET_NAME」シートが見つかりません');process.exit(1)}
+console.log(s.properties.sheetId);
+")
+echo "  → $TEMPLATE_SHEET_NAME sheetId: $TEMPLATE_SHEET_ID"
 
 # ════════════════════════════════════════════════
 # 1. テンプレ複製
@@ -172,7 +193,7 @@ if [[ $NUM_LABELS -gt $TEMPLATE_LABEL_ROWS ]]; then
 fi
 SEPARATOR_ROW=1  # ラベル別サマリと示唆セクションの間の空白行
 label_title_row=$((TEMPLATE_LABEL_TITLE_ROW + extra_months))
-insight_label_row=$((TEMPLATE_INSIGHT_LABEL_ROW + extra_months + extra_label_rows + SEPARATOR_ROW))
+insight_label_row=$((TEMPLATE_INSIGHT_LABEL_ROW + extra_months + extra_label_rows + LABEL_LIST_GAP + SEPARATOR_ROW))
 insight_row=$((insight_label_row + 2))  # 示唆ラベル行 + 空白1行 + 本文行
 echo "SHEET_NAME=$SHEET"
 echo "LABEL_SUMMARY_ROW=${label_title_row}"
@@ -209,26 +230,37 @@ SH
     echo "  → 余分なテンプレ数式クリア完了"
 fi
 
-# ラベル数がテンプレ行数を超える場合 or 空白行が必要な場合、示唆セクション前に行を追加
-insert_total=$((extra_label_rows + SEPARATOR_ROW))  # ラベル追加行 + セクション間空白行
-if [[ $insert_total -gt 0 ]]; then
-    insert_idx=$((TEMPLATE_INSIGHT_LABEL_ROW - 1 + extra_months))  # 0-based
+# ラベル数がテンプレ行数を超える場合、最初のラベルデータ行（26行目相当）の下に不足分を挿入
+# inheritFromBefore:true でラベル行の書式を引き継ぎ、施策一覧セクションは自然に下へずれる
+if [[ $extra_label_rows -gt 0 ]]; then
+    first_label_data_row=$((label_title_row + 3))  # 1-based (26 + extra_months)
+    insert_idx=$first_label_data_row                # 0-based: row 26 の直後
     cat > "$WORK/insert_label_rows.sh" <<SH
 gws sheets spreadsheets batchUpdate \
   --params '{"spreadsheetId":"$SHEET_ID"}' \
-  --json '{"requests":[{"insertDimension":{"range":{"sheetId":$SID,"dimension":"ROWS","startIndex":$insert_idx,"endIndex":$((insert_idx + insert_total))},"inheritFromBefore":false}}]}'
+  --json '{"requests":[{"insertDimension":{"range":{"sheetId":$SID,"dimension":"ROWS","startIndex":$insert_idx,"endIndex":$((insert_idx + extra_label_rows))},"inheritFromBefore":true}}]}'
 SH
     bash "$WORK/insert_label_rows.sh"
-    echo "  → ラベル用に${extra_label_rows}行 + 空白${SEPARATOR_ROW}行を追加挿入完了"
+    echo "  → ラベル用に${extra_label_rows}行を行${first_label_data_row}の下に追加挿入完了"
+fi
 
-    # 挿入行の背景色を白にリセット
+# セクション間の空白行を示唆セクション前に挿入
+if [[ $SEPARATOR_ROW -gt 0 ]]; then
+    separator_idx=$((TEMPLATE_INSIGHT_LABEL_ROW - 1 + extra_months + extra_label_rows))  # 0-based
+    cat > "$WORK/insert_separator.sh" <<SH
+gws sheets spreadsheets batchUpdate \
+  --params '{"spreadsheetId":"$SHEET_ID"}' \
+  --json '{"requests":[{"insertDimension":{"range":{"sheetId":$SID,"dimension":"ROWS","startIndex":$separator_idx,"endIndex":$((separator_idx + SEPARATOR_ROW))},"inheritFromBefore":false}}]}'
+SH
+    bash "$WORK/insert_separator.sh"
+    # 背景色を白にリセット
     cat > "$WORK/reset_bg.sh" <<SH
 gws sheets spreadsheets batchUpdate \
   --params '{"spreadsheetId":"$SHEET_ID"}' \
-  --json '{"requests":[{"repeatCell":{"range":{"sheetId":$SID,"startRowIndex":$insert_idx,"endRowIndex":$((insert_idx + insert_total)),"startColumnIndex":1,"endColumnIndex":5},"cell":{"userEnteredFormat":{"backgroundColor":{"red":1,"green":1,"blue":1}}},"fields":"userEnteredFormat.backgroundColor"}},{"repeatCell":{"range":{"sheetId":$SID,"startRowIndex":$insert_idx,"endRowIndex":$((insert_idx + insert_total)),"startColumnIndex":5,"endColumnIndex":$SUMMARY_END_COL_IDX},"cell":{"userEnteredFormat":{"backgroundColor":{"red":1,"green":1,"blue":1}}},"fields":"userEnteredFormat.backgroundColor"}},{"repeatCell":{"range":{"sheetId":$SID,"startRowIndex":$insert_idx,"endRowIndex":$((insert_idx + insert_total)),"startColumnIndex":$SUMMARY_END_COL_IDX,"endColumnIndex":26},"cell":{"userEnteredFormat":{"backgroundColor":{"red":1,"green":1,"blue":1}}},"fields":"userEnteredFormat.backgroundColor"}}]}'
+  --json '{"requests":[{"repeatCell":{"range":{"sheetId":$SID,"startRowIndex":$separator_idx,"endRowIndex":$((separator_idx + SEPARATOR_ROW)),"startColumnIndex":0,"endColumnIndex":26},"cell":{"userEnteredFormat":{"backgroundColor":{"red":1,"green":1,"blue":1}}},"fields":"userEnteredFormat.backgroundColor"}}]}'
 SH
     bash "$WORK/reset_bg.sh"
-    echo "  → 挿入行の背景色リセット完了"
+    echo "  → 空白${SEPARATOR_ROW}行を示唆セクション前に挿入完了"
 fi
 
 # ラベル別サマリの数値書式＋罫線を config から動的に適用
@@ -242,6 +274,18 @@ gws sheets spreadsheets batchUpdate \
 SH
 bash "$WORK/apply_fmt_label.sh"
 echo "  → ラベル別サマリのフォーマット適用完了 (行${label_header_row}:${label_data_last})"
+
+# ラベル別サマリと施策一覧サマリの間に空白行を挿入
+if [[ $LABEL_LIST_GAP -gt 0 ]]; then
+    gap_idx=$label_data_last  # 0-based: ラベル最終データ行の直後
+    cat > "$WORK/insert_gap.sh" <<SH
+gws sheets spreadsheets batchUpdate \
+  --params '{"spreadsheetId":"$SHEET_ID"}' \
+  --json '{"requests":[{"insertDimension":{"range":{"sheetId":$SID,"dimension":"ROWS","startIndex":$gap_idx,"endIndex":$((gap_idx + LABEL_LIST_GAP))},"inheritFromBefore":false}},{"repeatCell":{"range":{"sheetId":$SID,"startRowIndex":$gap_idx,"endRowIndex":$((gap_idx + LABEL_LIST_GAP)),"startColumnIndex":0,"endColumnIndex":26},"cell":{"userEnteredFormat":{"backgroundColor":{"red":1,"green":1,"blue":1}}},"fields":"userEnteredFormat.backgroundColor"}}]}'
+SH
+    bash "$WORK/insert_gap.sh"
+    echo "  → ラベル別サマリと施策一覧の間に空白${LABEL_LIST_GAP}行を挿入完了"
+fi
 
 echo ""
 echo "✅ 完了！シート「$SHEET」が作成されました"

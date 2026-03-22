@@ -11,10 +11,14 @@ CONFIG_FILE="${4:?Usage: $0 START_DATE END_DATE SHEET_ID CONFIG_FILE}"
 
 # テンプレの固定位置（write_report.shと合わせる）
 TEMPLATE_ROWS=3                # テンプレのデフォルトデータ行数（行18-20）
-TEMPLATE_LABEL_TITLE_ROW=22    # E22: ラベル別サマリ タイトル
+TEMPLATE_LABEL_TITLE_ROW=23    # E23: ラベル別サマリ タイトル
 
-# config から動的値を読み取り
-SUMMARY_END_COL=$(node -e "const c=JSON.parse(require('fs').readFileSync('$CONFIG_FILE','utf-8'));console.log(c.summaryEndCol)")
+# config から動的値を一括読み取り
+eval "$(node -e "
+const c=JSON.parse(require('fs').readFileSync('$CONFIG_FILE','utf-8'));
+console.log('SUMMARY_END_COL='+c.summaryEndCol);
+console.log('NUM_LABELS='+((c.labels||[]).length));
+")"
 
 # 月数を算出
 start_y=$(echo "$START_DATE" | cut -d/ -f1)
@@ -61,7 +65,6 @@ bash "$WORK/write.sh"
 echo "  → 完了"
 
 echo "[3/3] ラベル別集計値を読み取り..."
-NUM_LABELS=14  # gen_label_summary.jsのラベル数と合わせる
 data_start=$((section_title_row + 3))
 data_end=$((data_start + NUM_LABELS - 1))
 sleep 2  # Sheets再計算待ち
