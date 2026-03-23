@@ -5,12 +5,13 @@ const fs = require("fs");
 const { colLetter } = require("./utils");
 const [, , configFile, n, ...months] = process.argv;
 const config = JSON.parse(fs.readFileSync(configFile, "utf-8"));
+const dateCol = config.dateCol || "B";
 
 const FIRST = 18; // データ開始行
 const SUMMARY_START = 5; // F列 = index 5
 
 function sumifs(srcCol, row) {
-  return `=SUMIFS('配信実績'!$${srcCol}$2:$${srcCol},'配信実績'!$B$2:$B,">="&$F${row},'配信実績'!$B$2:$B,"<"&EDATE($F${row},1))`;
+  return `=SUMIFS('配信実績'!$${srcCol}$2:$${srcCol},'配信実績'!$${dateCol}$2:$${dateCol},">="&$F${row},'配信実績'!$${dateCol}$2:$${dateCol},"<"&EDATE($F${row},1))`;
 }
 
 const values = months.map((ym, i) => {

@@ -1,43 +1,26 @@
 {
+  "dateCol": "T",
+  "campaignCol": "B",
   "metrics": [
-    {
-      "name": "配信数",
-      "srcCol": "C",
-      "rateOf": null
-    },
-    {
-      "name": "開封数",
-      "srcCol": "D",
-      "rateOf": "配信数"
-    },
-    {
-      "name": "クリック数",
-      "srcCol": "E",
-      "rateOf": "開封数"
-    },
-    {
-      "name": "直接CV数",
-      "srcCol": "F",
-      "rateOf": "クリック数"
-    },
-    {
-      "name": "間接CV数",
-      "srcCol": "G",
-      "rateOf": "クリック数"
-    },
-    {
-      "name": "直接CV金額",
-      "srcCol": "H",
-      "rateOf": null
-    },
-    {
-      "name": "間接CV金額",
-      "srcCol": "I",
-      "rateOf": null
-    }
+    { "name": "配信数", "summaryName": "配信数", "srcCol": "I", "rateOf": null },
+    { "name": "開封数", "summaryName": "開封数", "srcCol": "K", "rateOf": "配信数" },
+    { "name": "クリック数", "summaryName": "クリック数", "srcCol": "L", "rateOf": "開封数" },
+    { "name": "直接コンバージョン数", "summaryName": "直接CV数", "srcCol": "N", "rateOf": "クリック数" },
+    { "name": "間接コンバージョン数", "summaryName": "間接CV数", "srcCol": "O", "rateOf": "クリック数" }
   ],
-  "labelCol": "J",
-  "labelColIndex": 9,
+  "labels": [
+    "興味ありレコメンド",
+    "閲覧レコメンド",
+    "新着求人",
+    "おすすめ求人",
+    "応募・職歴レコメンド",
+    "ウェルカムメール",
+    "単発・キャンペーン",
+    "システム通知",
+    "法人向け"
+  ],
+  "labelCol": "U",
+  "labelColIndex": 20,
   "summaryHeader": [
     "年月",
     "配信数",
@@ -48,29 +31,11 @@
     "直接CV数",
     "直接CV率",
     "間接CV数",
-    "間接CV率",
-    "直接CV金額",
-    "間接CV金額"
+    "間接CV率"
   ],
-  "summaryCols": 12,
+  "summaryCols": 10,
   "summaryStartCol": "F",
-  "summaryEndCol": "Q",
+  "summaryEndCol": "O",
   "summaryStartColIndex": 5,
-  "summaryEndColIndex": 17,
-  "labels": [
-    "F2転換",
-    "THANKS招待",
-    "お気に入りリタゲ",
-    "かご落ち",
-    "イベント/個別配信",
-    "クーポン/INFO",
-    "バースデー特典",
-    "ランクアップ",
-    "会員特典",
-    "個店メルマガ",
-    "全店メルマガ",
-    "全店メルマガ（レコメンド）",
-    "全店メルマガ（週間ランキング）",
-    "閲覧リタゲ"
-  ]
+  "summaryEndColIndex": 15
 }

@@ -93,6 +93,20 @@ result=$(bash "$WORK/dup.sh")
 SID=$(echo "$result" | grep -o '"sheetId": [0-9]*' | head -1 | tr -dc '0-9')
 echo "  → sheetId: $SID"
 
+# テンプレの最大列数（Q列 = index 16 まで）を超える列をクリア
+TEMPLATE_MAX_COL_IDX=17  # Q列+1 (0-based exclusive)
+if [[ $SUMMARY_END_COL_IDX -lt $TEMPLATE_MAX_COL_IDX ]]; then
+    # 年月別: ヘッダー行(17) + テンプレデータ行(18-20) → 0-based 16-20
+    # ラベル別: ヘッダー行(25) + テンプレデータ行(26-30) → 0-based 24-30
+    cat > "$WORK/clear_extra_cols.sh" <<SH
+gws sheets spreadsheets batchUpdate \
+  --params '{"spreadsheetId":"$SHEET_ID"}' \
+  --json '{"requests":[{"updateCells":{"range":{"sheetId":$SID,"startRowIndex":16,"endRowIndex":20,"startColumnIndex":$SUMMARY_END_COL_IDX,"endColumnIndex":$TEMPLATE_MAX_COL_IDX},"fields":"userEnteredValue,userEnteredFormat"}},{"updateCells":{"range":{"sheetId":$SID,"startRowIndex":24,"endRowIndex":30,"startColumnIndex":$SUMMARY_END_COL_IDX,"endColumnIndex":$TEMPLATE_MAX_COL_IDX},"fields":"userEnteredValue,userEnteredFormat"}}]}'
+SH
+    bash "$WORK/clear_extra_cols.sh"
+    echo "  → 不要列($(node -e "const {colLetter}=require('$SCRIPT_DIR_NODE/utils');console.log(colLetter($SUMMARY_END_COL_IDX))")〜Q)の書式・値をクリア完了"
+fi
+
 # 月数がテンプレ行数を超える場合、データ行を追加挿入
 extra_months=0
 if [[ $n -gt $TEMPLATE_ROWS ]]; then

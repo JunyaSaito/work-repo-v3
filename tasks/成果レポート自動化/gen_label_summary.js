@@ -21,9 +21,10 @@ const de = `DATE(${ey},${em},${ed})`;
 
 const SUMMARY_START = 5; // F列 = index 5
 const labelCol = config.labelCol;
+const dateCol = config.dateCol || "B";
 
 function sumifs(srcCol, label) {
-  return `SUMIFS('配信実績'!$${srcCol}$2:$${srcCol},'配信実績'!$B$2:$B,">="&${ds},'配信実績'!$B$2:$B,"<="&${de},'配信実績'!$${labelCol}$2:$${labelCol},"${label}")`;
+  return `SUMIFS('配信実績'!$${srcCol}$2:$${srcCol},'配信実績'!$${dateCol}$2:$${dateCol},">="&${ds},'配信実績'!$${dateCol}$2:$${dateCol},"<="&${de},'配信実績'!$${labelCol}$2:$${labelCol},"${label}")`;
 }
 
 const sectionTitleRow = parseInt(sectionTitleRowStr);

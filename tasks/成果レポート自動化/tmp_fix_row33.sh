@@ -1,3 +1,0 @@
-gws sheets spreadsheets values update \
-  --params '{"spreadsheetId":"17hbZF5p8t0O254YV7LKXWkcABBvqwsRn-GqV60e5OlQ","range":"成果レポート_202510-202512!G33:J33","valueInputOption":"USER_ENTERED"}' \
-  --json '{"values":[["=SUMIFS(配信実績!$C$2:$C,配信実績!$B$2:$B,\">=\"&DATE(2025,10,1),配信実績!$B$2:$B,\"<=\"&DATE(2025,12,31),配信実績!$J$2:$J,\"ランクアップ\")","=SUMIFS(配信実績!$D$2:$D,配信実績!$B$2:$B,\">=\"&DATE(2025,10,1),配信実績!$B$2:$B,\"<=\"&DATE(2025,12,31),配信実績!$J$2:$J,\"ランクアップ\")","=IFERROR(H33/G33,0)","=SUMIFS(配信実績!$E$2:$E,配信実績!$B$2:$B,\">=\"&DATE(2025,10,1),配信実績!$B$2:$B,\"<=\"&DATE(2025,12,31),配信実績!$J$2:$J,\"ランクアップ\")"]]}'
