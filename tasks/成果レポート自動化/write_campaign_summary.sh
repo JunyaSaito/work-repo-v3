@@ -37,6 +37,9 @@ console.log('SUMMARY_END_COL='+c.summaryEndCol);
 console.log('SUMMARY_END_COL_IDX='+c.summaryEndColIndex);
 console.log('SUMMARY_COLS='+c.summaryCols);
 console.log('NUM_LABELS='+((c.labels||[]).length));
+console.log('CAMPAIGN_COL='+(c.campaignCol||'A'));
+console.log('DATE_COL='+(c.dateCol||'B'));
+console.log('LABEL_COL='+(c.labelCol||'J'));
 ")"
 
 # ── 月数・オフセット計算 ──
@@ -84,19 +87,24 @@ echo "  → sheetId: $SID"
 # 1. 配信実績データを読み取り、最終月の施策を抽出
 # ════════════════════════════════════════════════
 echo "[1/6] 配信実績データを読み取り..."
-cat > "$WORK/read_ab.sh" <<SH
+cat > "$WORK/read_name.sh" <<SH
 gws sheets spreadsheets values get \
-  --params '{"spreadsheetId":"$SHEET_ID","range":"配信実績!A:B","valueRenderOption":"FORMATTED_VALUE"}'
+  --params '{"spreadsheetId":"$SHEET_ID","range":"配信実績!${CAMPAIGN_COL}:${CAMPAIGN_COL}","valueRenderOption":"FORMATTED_VALUE"}'
 SH
-cat > "$WORK/read_j.sh" <<SH
+cat > "$WORK/read_date.sh" <<SH
 gws sheets spreadsheets values get \
-  --params '{"spreadsheetId":"$SHEET_ID","range":"配信実績!J:J"}'
+  --params '{"spreadsheetId":"$SHEET_ID","range":"配信実績!${DATE_COL}:${DATE_COL}","valueRenderOption":"FORMATTED_VALUE"}'
 SH
-bash "$WORK/read_ab.sh" > "$WORK/ab.json"
-bash "$WORK/read_j.sh" > "$WORK/j.json"
+cat > "$WORK/read_label.sh" <<SH
+gws sheets spreadsheets values get \
+  --params '{"spreadsheetId":"$SHEET_ID","range":"配信実績!${LABEL_COL}:${LABEL_COL}"}'
+SH
+bash "$WORK/read_name.sh" > "$WORK/name.json"
+bash "$WORK/read_date.sh" > "$WORK/date.json"
+bash "$WORK/read_label.sh" > "$WORK/label.json"
 
 eval "$(node "$SCRIPT_DIR_NODE/gen_campaign_formulas.js" \
-  "$CONFIG_FILE" "$WORK_NODE/ab.json" "$WORK_NODE/j.json" \
+  "$CONFIG_FILE" "$WORK_NODE/name.json" "$WORK_NODE/date.json" "$WORK_NODE/label.json" \
   "$end_y" "$end_m" "$list_data_start" "$WORK_NODE")"
 echo "  → 最終月(${end_y}/${end_m})のユニーク施策数: $NUM_CAMPAIGNS"
 
@@ -177,6 +185,20 @@ SH
     bash "$WORK/write_formulas_${i}.sh"
     echo "    → チャンク${i} (${CHUNK_RANGE}) 完了"
 done
+
+# テンプレの余剰列（metrics終端〜U列）をクリア
+TEMPLATE_CAMPAIGN_MAX_COL_IDX=21  # U列+1 (0-based exclusive)
+if [[ $METRICS_END_COL_IDX -lt $TEMPLATE_CAMPAIGN_MAX_COL_IDX ]]; then
+    clear_start_row=$((list_header_row - 1))  # 0-based
+    clear_end_row=$list_data_end              # 0-based exclusive
+    cat > "$WORK/clear_extra_cols.sh" <<SH
+gws sheets spreadsheets batchUpdate \
+  --params '{"spreadsheetId":"$SHEET_ID"}' \
+  --json '{"requests":[{"updateCells":{"range":{"sheetId":$SID,"startRowIndex":$clear_start_row,"endRowIndex":$clear_end_row,"startColumnIndex":$METRICS_END_COL_IDX,"endColumnIndex":$TEMPLATE_CAMPAIGN_MAX_COL_IDX},"fields":"userEnteredValue,userEnteredFormat"}}]}'
+SH
+    bash "$WORK/clear_extra_cols.sh"
+    echo "  → 不要列($(node -e "const {colLetter}=require('$SCRIPT_DIR_NODE/utils');console.log(colLetter($METRICS_END_COL_IDX))")〜U)の書式・値をクリア完了"
+fi
 
 # ════════════════════════════════════════════════
 # 5. フォーマットを統一

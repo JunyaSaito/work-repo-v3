@@ -1,8 +1,9 @@
 // gen_campaign_formulas.js
-// Usage: node gen_campaign_formulas.js CONFIG_FILE AB_DATA_FILE J_DATA_FILE LAST_YEAR LAST_MONTH DATA_START_ROW OUT_DIR
+// Usage: node gen_campaign_formulas.js CONFIG_FILE NAME_DATA_FILE DATE_DATA_FILE LABEL_DATA_FILE LAST_YEAR LAST_MONTH DATA_START_ROW OUT_DIR
 //
-// AB_DATA_FILE: gws values get の出力JSON（配信実績!A:B）
-// J_DATA_FILE:  gws values get の出力JSON（配信実績!J:J）※ラベル列
+// NAME_DATA_FILE:  gws values get の出力JSON（配信実績!{campaignCol}:{campaignCol}）
+// DATE_DATA_FILE:  gws values get の出力JSON（配信実績!{dateCol}:{dateCol}）
+// LABEL_DATA_FILE: gws values get の出力JSON（配信実績!{labelCol}:{labelCol}）
 // LAST_YEAR/LAST_MONTH: 最終月の年・月（数値）
 // DATA_START_ROW: 施策一覧データ開始行（1-based）
 // OUT_DIR: 出力先ディレクトリ
@@ -16,19 +17,24 @@ const fs = require("fs");
 const path = require("path");
 const { colLetter } = require("./utils");
 
-const [, , configFile, abFile, jFile, lastYearStr, lastMonthStr, dataStartRowStr, outDir] =
+const [, , configFile, nameFile, dateFile, labelFile, lastYearStr, lastMonthStr, dataStartRowStr, outDir] =
   process.argv;
 
 const config = JSON.parse(fs.readFileSync(configFile, "utf-8"));
-const abData = JSON.parse(fs.readFileSync(abFile, "utf-8"));
-const jData = JSON.parse(fs.readFileSync(jFile, "utf-8"));
+const nameData = JSON.parse(fs.readFileSync(nameFile, "utf-8"));
+const dateData = JSON.parse(fs.readFileSync(dateFile, "utf-8"));
+const labelData = JSON.parse(fs.readFileSync(labelFile, "utf-8"));
 const lastYear = parseInt(lastYearStr);
 const lastMonth = parseInt(lastMonthStr);
 const dataStartRow = parseInt(dataStartRowStr);
 
+const campaignCol = config.campaignCol || "A";
+const dateCol = config.dateCol || "B";
+
 // ── 最終月のユニーク施策名を抽出 ──
-const abRows = abData.values.slice(1);
-const jRows = jData.values.slice(1);
+const nameRows = nameData.values.slice(1);
+const dateRows = dateData.values.slice(1);
+const labelRows = labelData.values.slice(1);
 
 const campaignMap = new Map(); // name -> label
 const datePattern = new RegExp(
@@ -36,10 +42,10 @@ const datePattern = new RegExp(
   `${lastYear}[/\\-]${String(lastMonth).padStart(2, "0")}(?:[/\\-]|$)`
 );
 
-for (let i = 0; i < abRows.length; i++) {
-  const name = abRows[i][0];
-  const date = abRows[i][1];
-  const label = jRows[i] ? jRows[i][0] : "";
+for (let i = 0; i < nameRows.length; i++) {
+  const name = nameRows[i] ? nameRows[i][0] : "";
+  const date = dateRows[i] ? dateRows[i][0] : "";
+  const label = labelRows[i] ? labelRows[i][0] : "";
   if (!name || !date) continue;
   if (datePattern.test(date)) {
     if (!campaignMap.has(name)) {
@@ -69,7 +75,7 @@ const ds = `DATE(${lastYear},${lastMonth},1)`;
 const de = `DATE(${lastYear},${lastMonth},${lastDay})`;
 
 function sumifs(srcCol, row) {
-  return `=SUMIFS('配信実績'!${srcCol}:${srcCol},'配信実績'!A:A,F${row},'配信実績'!B:B,">="&${ds},'配信実績'!B:B,"<="&${de})`;
+  return `=SUMIFS('配信実績'!${srcCol}:${srcCol},'配信実績'!${campaignCol}:${campaignCol},F${row},'配信実績'!${dateCol}:${dateCol},">="&${ds},'配信実績'!${dateCol}:${dateCol},"<="&${de})`;
 }
 
 const allFormulas = sorted.map((_, i) => {
